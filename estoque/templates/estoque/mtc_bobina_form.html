@@ -1,0 +1,151 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12">
+        
+        {% if mtc_form.errors or formset.errors %}
+            <div class="alert alert-danger shadow-sm mb-4">
+                <h5 class="alert-heading fw-bold">Não foi possível salvar!</h5>
+                <p class="mb-0">Foram encontrados os seguintes erros:</p>
+                <ul class="mb-0 mt-2">
+                    {% for field, errors in mtc_form.errors.items %}
+                        {% for error in errors %}
+                            <li><strong>Lote/MTC (Campo: {{ field|title }}):</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    
+                    {% for form in formset %}
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li><strong>Bobina (Campo: {{ field|title }}):</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="card shadow-sm mb-4 border-primary">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{% if editando %}✏️ Editando Lote{% else %}Novo Lote{% endif %}</h5>
+                    <a href="{% url 'index' %}" class="btn btn-sm btn-outline-light">Cancelar e Voltar</a>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-lg-3 col-md-6 mb-3"><label class="form-label fw-bold">{{ mtc_form.num_controle.label }}</label>{{ mtc_form.num_controle }}</div>
+                        <div class="col-lg-2 col-md-6 mb-3"><label class="form-label fw-bold">{{ mtc_form.data_recebimento.label }}</label>{{ mtc_form.data_recebimento }}</div>
+                        <div class="col-lg-3 col-md-6 mb-3"><label class="form-label fw-bold">{{ mtc_form.fornecedor.label }}</label>{{ mtc_form.fornecedor }}</div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <label class="form-label fw-bold">{{ mtc_form.arquivo.label }}</label>
+                            {{ mtc_form.arquivo }}
+                            {% if mtc_form.instance.arquivo %}
+                                <div class="mt-1 small">Atual: <a href="{{ mtc_form.instance.arquivo.url }}" target="_blank">Visualizar Anexo</a></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 border-secondary">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Bobinas do Lote</h5>
+                    <button type="button" id="add-bobina" class="btn btn-sm btn-light fw-bold text-success">+ Adicionar Linha</button>
+                </div>
+                <div class="card-body p-3 p-xl-4">
+                    {{ formset.management_form }}
+                    
+                    <div id="bobinas-container">
+                        {% for form in formset %}
+                            <div class="row bobina-form align-items-end mb-4 pb-3 border-bottom position-relative bg-light p-2 p-xl-3 rounded pe-5">
+                                
+                                <div class="position-absolute top-50 end-0 translate-middle-y me-2 w-auto text-end">
+                                    <div class="d-none">
+                                        {% for hidden in form.hidden_fields %}
+                                            {{ hidden }}
+                                        {% endfor %}
+                                        {{ form.DELETE }}
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha" title="Remover Linha">✖</button>
+                                </div>
+
+                                <div class="col-xl-2 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1">Corrida Mãe</label>{{ form.corrida }}</div>
+                                <div class="col-xl-3 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1">Tipo de Aço</label>{{ form.tipo_aco }}</div>
+                                <div class="col-xl-1 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1" title="Em Kg">Peso</label>{{ form.peso_inicial }}</div>
+                                
+                                <div class="col-xl-1 col-md-2 mb-2">
+                                    <label class="form-label fw-bold small text-warning mb-1" title="Máx 2">Divisão</label>
+                                    {% if form.instance.pk %}
+                                        <input type="text" class="form-control" value="Já Dividida" disabled style="font-size: 0.8rem;">
+                                    {% else %}
+                                        {{ form.qtd_irmas }}
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-xl-1 col-md-3 mb-2"><label class="form-label fw-bold small text-muted mb-1" title="Resistência">Resist.</label>{{ form.resistencia }}</div>
+                                <div class="col-xl-1 col-md-3 mb-2"><label class="form-label fw-bold small text-muted mb-1" title="Escoamento">Escoam.</label>{{ form.escoamento }}</div>
+                                <div class="col-xl-2 col-md-4 mb-2"><label class="form-label fw-bold small text-muted mb-1">Alongam. (%)</label>{{ form.alongamento }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mb-5">
+                <button type="submit" class="btn btn-success fw-bold px-5">{% if editando %}Salvar Alterações{% else %}Salvar Lote Completo{% endif %}</button>
+            </div>
+        </form>
+
+        <div id="empty-form" class="d-none">
+            <div class="row bobina-form align-items-end mb-4 pb-3 border-bottom position-relative bg-light p-2 p-xl-3 rounded pe-5">
+                <div class="position-absolute top-50 end-0 translate-middle-y me-2 w-auto">
+                    <div class="d-none">
+                        {% for hidden in formset.empty_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+                        {{ formset.empty_form.DELETE }}
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha" title="Remover Linha">✖</button>
+                </div>
+                <div class="col-xl-2 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1">Corrida Mãe</label>{{ formset.empty_form.corrida }}</div>
+                <div class="col-xl-3 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1">Tipo de Aço</label>{{ formset.empty_form.tipo_aco }}</div>
+                <div class="col-xl-1 col-md-4 mb-2"><label class="form-label fw-bold small text-primary mb-1">Peso</label>{{ formset.empty_form.peso_inicial }}</div>
+                <div class="col-xl-1 col-md-2 mb-2"><label class="form-label fw-bold small text-warning mb-1">Divisão</label>{{ formset.empty_form.qtd_irmas }}</div>
+                <div class="col-xl-1 col-md-3 mb-2"><label class="form-label fw-bold small text-muted mb-1">Resist.</label>{{ formset.empty_form.resistencia }}</div>
+                <div class="col-xl-1 col-md-3 mb-2"><label class="form-label fw-bold small text-muted mb-1">Escoam.</label>{{ formset.empty_form.escoamento }}</div>
+                <div class="col-xl-2 col-md-4 mb-2"><label class="form-label fw-bold small text-muted mb-1">Alongam. (%)</label>{{ formset.empty_form.alongamento }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const addButton = document.getElementById("add-bobina");
+        const container = document.getElementById("bobinas-container");
+        const totalFormsInput = document.getElementById("id_bobina_set-TOTAL_FORMS");
+        const emptyFormTemplate = document.getElementById("empty-form").innerHTML;
+
+        addButton.addEventListener("click", function() {
+            const currentFormCount = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, currentFormCount);
+            container.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = currentFormCount + 1;
+        });
+
+        container.addEventListener("click", function(e) {
+            if(e.target && (e.target.classList.contains("btn-remover-linha") || e.target.parentElement.classList.contains("btn-remover-linha"))) {
+                const formRow = e.target.closest(".bobina-form");
+                const deleteCheckbox = formRow.querySelector("input[type='checkbox'][name$='-DELETE']");
+                if(deleteCheckbox) {
+                    deleteCheckbox.checked = true;
+                }
+                formRow.style.display = "none"; 
+            }
+        });
+    });
+</script>
+{% endblock %}

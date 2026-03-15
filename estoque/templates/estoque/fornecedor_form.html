@@ -1,0 +1,38 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Cadastrar Novo Fornecedor</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Fornecedor</label>
+                        {{ form.nome }}
+                    </div>
+
+                    <div class="form-check mb-2">
+                        {{ form.nacional }}
+                        <label class="form-check-label">Fornecedor Nacional?</label>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        {{ form.ativo }}
+                        <label class="form-check-label">Cadastro Ativo?</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Salvar Fornecedor</button>
+                        <a href="{% url 'index' %}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

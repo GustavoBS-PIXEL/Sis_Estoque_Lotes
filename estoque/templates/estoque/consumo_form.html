@@ -1,0 +1,107 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row">
+    
+    {% if user.perfil.tipo != 'VISUALIZADOR' %}
+    <div class="col-md-5">
+        <div class="card shadow-sm border-warning mb-4">
+            <div class="card-header bg-warning text-dark border-warning">
+                <h4 class="mb-0">{% if editando %}Editar Baixa{% else %}Registar Baixa{% endif %}</h4>
+            </div>
+            <div class="card-body">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger shadow-sm">
+                        {% for error in form.non_field_errors %}
+                            <strong>Atenção:</strong> {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endfor %}
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-warning fw-bold">{% if editando %}Salvar Alteração{% else %}Confirmar Baixa{% endif %}</button>
+                        {% if editando %}
+                            <a href="{% url 'registrar_consumo' %}?bobina={{ bobina_selecionada.id }}" class="btn btn-outline-secondary">Cancelar Edição</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="{% if user.perfil.tipo == 'VISUALIZADOR' %}col-md-12{% else %}col-md-7{% endif %}">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Histórico de Consumo</h5>
+                <div>
+                    {% if bobina_selecionada %}
+                        <span class="badge bg-light text-dark fw-bold fs-6 me-2">Corrida: {{ bobina_selecionada.corrida }}</span>
+                        <a href="{% url 'detalhe_tipo' bobina_selecionada.tipo_aco.id %}" class="btn btn-sm btn-outline-light">Voltar</a>
+                    {% else %}
+                        <a href="{% url 'index' %}" class="btn btn-sm btn-outline-light">Voltar ao Início</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                {% if bobina_selecionada %}
+                    <div class="d-flex justify-content-between mb-3 bg-light p-2 rounded border">
+                        <span class="text-secondary fw-bold">Peso Inicial: {{ bobina_selecionada.peso_inicial }} kg</span>
+                        <span class="text-success fw-bold">Saldo Atual: {{ bobina_selecionada.saldo_atual }} kg</span>
+                    </div>
+                {% endif %}
+
+                {% if historico %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Usuário</th>
+                                    <th>Peso (kg)</th>
+                                    <th>Obs</th>
+                                    {% if user.perfil.tipo != 'VISUALIZADOR' %}
+                                        <th class="text-end">Ações</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in historico %}
+                                <tr>
+                                    <td>{{ item.data_consumo|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ item.usuario.username|default:"Sistema" }}</td>
+                                    <td class="text-danger fw-bold">- {{ item.peso }}</td>
+                                    <td>
+                                        <span class="d-inline-block text-truncate" style="max-width: 150px;" title="{{ item.observacao|default:'-' }}">
+                                            {{ item.observacao|default:"-" }}
+                                        </span>
+                                    </td>
+                                    
+                                    {% if user.perfil.tipo != 'VISUALIZADOR' %}
+                                    <td class="text-end">
+                                        <a href="{% url 'editar_consumo' item.id %}" class="btn btn-sm btn-outline-primary">✎</a>
+                                        <a href="{% url 'excluir_consumo' item.id %}" class="btn btn-sm btn-outline-danger">✖</a>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <p>Nenhuma baixa registada no momento.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

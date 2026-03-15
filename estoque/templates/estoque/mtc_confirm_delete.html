@@ -1,0 +1,26 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Atenção! Confirmação de Exclusão</h4>
+            </div>
+            <div class="card-body text-center py-4">
+                <h5 class="card-title">Você está prestes a apagar o Lote: <strong class="text-danger">{{ mtc.num_controle }}</strong></h5>
+                <p class="card-text text-muted mt-3">
+                    A exclusão deste Lote/MTC apagará automaticamente <strong>todas as bobinas</strong> atreladas a ele, juntamente com o histórico de consumo associado.<br><br>
+                    Esta ação não pode ser desfeita.
+                </p>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <a href="javascript:history.back()" class="btn btn-secondary me-2 px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">Sim, Apagar Lote Permanentemente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

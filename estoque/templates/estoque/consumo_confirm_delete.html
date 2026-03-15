@@ -1,0 +1,30 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Confirmar Exclusão</h4>
+            </div>
+            <div class="card-body text-center py-4">
+                <h5 class="text-danger mb-3">Você tem certeza que deseja excluir esta baixa?</h5>
+                <p>
+                    <strong>Bobina:</strong> {{ consumo.bobina.corrida }}<br>
+                    <strong>Peso Abatido:</strong> {{ consumo.peso }} kg<br>
+                    <strong>Data:</strong> {{ consumo.data_consumo|date:"d/m/Y H:i" }}<br>
+                </p>
+                <div class="alert alert-warning">
+                    Ao excluir este registro, o saldo da bobina voltará a subir proporcionalmente.
+                </div>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger fw-bold">Sim, Quero Excluir</button>
+                    <a href="{% url 'registrar_consumo' %}?bobina={{ consumo.bobina.id }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

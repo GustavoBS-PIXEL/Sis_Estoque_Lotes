@@ -1,0 +1,21 @@
+# Ambiente Virtual
+venv/
+env/
+
+# Banco de Dados
+db.sqlite3
+
+# Arquivos de Upload (PDFs, Imagens)
+media/
+
+# Cache do Python
+*.pyc
+__pycache__/
+
+# Arquivos de configuração de IDEs e SO
+.vscode/
+.idea/
+.DS_Store
+
+# Variáveis de Ambiente 
+.env
