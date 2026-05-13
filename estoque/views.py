@@ -6,6 +6,7 @@ from io import BytesIO
 import base64
 from django.db.models import F
 
+
 from .models import TipoAco, Bobina, Fornecedor, Consumo, RegistroAuditoria, MTC, TipoConsumo
 from .forms import FornecedorForm, BobinaFormSet, ConsumoForm, MTCForm, TipoAcoForm, TipoConsumoForm
 
@@ -164,31 +165,36 @@ def excluir_lote_mtc(request, mtc_id):
 # ==========================================
 @login_required
 def registrar_consumo(request):
-    if hasattr(request.user, 'perfil') and request.user.perfil.tipo == 'VISUALIZADOR': 
-        return redirect('index')
-        
     bobina_id = request.GET.get('bobina')
     bobina_selecionada = None
     if bobina_id:
         bobina_selecionada = get_object_or_404(Bobina, id=bobina_id)
 
     if request.method == 'POST':
+        # ✅ Trava de segurança para o VISUALIZADOR não salvar
+        if hasattr(request.user, 'perfil') and request.user.perfil.tipo == 'VISUALIZADOR':
+            return redirect('index')
+
+        # Usando o nome correto do seu Form: ConsumoForm
         form = ConsumoForm(request.POST)
         if form.is_valid():
             consumo = form.save(commit=False)
             consumo.usuario = request.user
+            consumo.bobina = bobina_selecionada
             consumo.save()
-            RegistroAuditoria.objects.create(tabela_afetada='Consumo', identificador=f"Consumo de {consumo.peso}kg - {consumo.bobina.corrida}", acao='CRIACAO', usuario=request.user)
-            return redirect('detalhe_tipo', tipo_id=consumo.bobina.tipo_aco.id)
+            return redirect(f"{reverse('registrar_consumo')}?bobina={bobina_selecionada.id}")
     else:
-        initial_data = {}
-        if bobina_selecionada: 
-            initial_data['bobina'] = bobina_selecionada
-        form = ConsumoForm(initial=initial_data)
+        # Usando o nome correto do seu Form: ConsumoForm
+        form = ConsumoForm()
 
+    # Usando o nome correto do seu Model: Consumo
     historico = Consumo.objects.filter(bobina=bobina_selecionada).order_by('-data_consumo') if bobina_selecionada else []
-    return render(request, 'estoque/consumo_form.html', {'form': form, 'bobina_selecionada': bobina_selecionada, 'historico': historico, 'editando': False})
 
+    return render(request, 'estoque/consumo_form.html', {
+        'form': form,
+        'bobina_selecionada': bobina_selecionada,
+        'historico': historico,
+    })
 @login_required
 def editar_consumo(request, consumo_id):
     if hasattr(request.user, 'perfil') and request.user.perfil.tipo == 'VISUALIZADOR': 
