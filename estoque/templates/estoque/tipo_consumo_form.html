@@ -1,0 +1,27 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{% if editando %}✏️ Editar{% else %}🔥 Novo{% endif %} Tipo de Consumo</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Descrição da Operação</label>
+                        {{ form.descricao }}
+                        <div class="form-text">Ex: Corte Plasma, Dobra, Prensa, Oxicorte...</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'lista_tipos_consumo' %}" class="btn btn-outline-secondary w-50">Cancelar</a>
+                        <button type="submit" class="btn btn-success w-50 fw-bold">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

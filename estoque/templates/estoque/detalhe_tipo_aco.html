@@ -4,117 +4,104 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-0">Bobinas: <span class="text-primary">{{ tipo.descricao }}</span></h2>
-        <small class="text-muted">Liga: {{ tipo.liga_metalica }} | Dimensões: {{ tipo.espessura }} x {{ tipo.largura }} mm</small>
+        <small class="text-muted">Liga: {{ tipo.liga_metalica }} | Dimensões: {{ tipo.espessura|floatformat:2 }} x {{ tipo.largura|floatformat:2 }} mm</small>
     </div>
-    <div>
-        <a href="{% url 'index' %}" class="btn btn-outline-secondary">Voltar ao Início</a>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary">Voltar ao Início</a>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body bg-light py-2">
+        <div class="d-flex align-items-center">
+            <strong class="me-3">Filtro:</strong>
+            <div class="btn-group" role="group">
+                <a href="?filtro=ativas" class="btn btn-sm {% if filtro_atual == 'ativas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">📦 Disponíveis (Abertas/Fechadas)</a>
+                <a href="?filtro=finalizadas" class="btn btn-sm {% if filtro_atual == 'finalizadas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">❌ Finalizadas (Esgotadas)</a>
+                <a href="?filtro=todas" class="btn btn-sm {% if filtro_atual == 'todas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">📋 Ver Todas</a>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="mb-3 d-flex gap-2 bg-white p-2 rounded shadow-sm d-inline-block">
-    <span class="fw-bold text-muted me-2 align-self-center ps-2">Filtro:</span>
-    <a href="?filtro=ativas" class="btn btn-sm {% if filtro_atual == 'ativas' %}btn-primary fw-bold shadow-sm{% else %}btn-outline-primary{% endif %}">
-        📦 Disponíveis (Abertas/Fechadas)
-    </a>
-    <a href="?filtro=finalizadas" class="btn btn-sm {% if filtro_atual == 'finalizadas' %}btn-dark fw-bold shadow-sm{% else %}btn-outline-dark{% endif %}">
-        ✖ Finalizadas (Esgotadas)
-    </a>
-    <a href="?filtro=todas" class="btn btn-sm {% if filtro_atual == 'todas' %}btn-secondary fw-bold shadow-sm{% else %}btn-outline-secondary{% endif %}">
-        📋 Ver Todas
-    </a>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.90rem;">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4 py-3">Data</th>
-                        <th class="py-3">Corrida/Lote</th> <th class="py-3">NF / Container</th> <th class="py-3 text-center">Dados Físicos</th>
-                        <th class="py-3">Peso</th>
-                        <th class="py-3">Saldo</th>
-                        <th class="py-3">Usuário</th>
-                        <th class="py-3">Status</th>
-                        <th class="text-end pe-4 py-3">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for bobina in bobinas %}
-                    <tr>
-                        <td class="ps-4 text-muted small">
-                            <strong>{{ bobina.mtc.data_recebimento|date:"d/m/Y" }}</strong>
-                        </td>
-                        
-                        <td><strong>{{ bobina.corrida }}</strong></td>
-                        
-                        <td>
-                            <div>
-                                {% if bobina.mtc.arquivo %}
-                                    <a href="{{ bobina.mtc.arquivo.url }}" target="_blank" class="text-decoration-none fw-bold text-primary" title="Abrir PDF">
-                                        📄 {{ bobina.mtc.num_controle }}
-                                    </a>
-                                {% else %}
-                                    <span class="fw-bold" title="Sem anexo">{{ bobina.mtc.num_controle }}</span>
-                                {% endif %}
-                            </div>
+<div class="card shadow-sm border-secondary">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-center text-muted" style="font-size: 0.85rem;">
+                    <th>Data</th>
+                    <th>Corrida/Lote</th>
+                    <th>NF / Container</th>
+                    <th>Dados Físicos</th>
+                    <th>Peso</th>
+                    <th>Saldo</th>
+                    <th>Usuário</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bobina in bobinas %}
+                <tr class="text-center" style="font-size: 0.9rem;">
+                    <td>{{ bobina.mtc.data_recebimento|date:"d/m/Y" }}</td>
+                    
+                    <td class="fw-bold">{{ bobina.corrida }}</td>
+                    
+                    <td>
+                        <div class="d-flex flex-column align-items-center">
+                            {% if bobina.mtc.arquivo %}
+                                <a href="{{ bobina.mtc.arquivo.url }}" target="_blank" class="text-decoration-none fw-bold" style="font-size: 0.85rem;">📄 {{ bobina.mtc.num_controle }}</a>
+                            {% else %}
+                                <span class="fw-bold text-muted" style="font-size: 0.85rem;">📄 {{ bobina.mtc.num_controle }}</span>
+                            {% endif %}
                             
                             {% if user.perfil.tipo != 'VISUALIZADOR' %}
                                 <div class="mt-1">
-                                    <a href="{% url 'editar_lote_mtc' bobina.mtc.id %}" class="badge bg-warning text-dark text-decoration-none shadow-sm" title="Editar este Lote/Bobinas">✎ Edit</a>
-                                    <a href="{% url 'excluir_lote_mtc' bobina.mtc.id %}" class="badge bg-danger text-decoration-none shadow-sm" title="Apagar o Lote Todo">✖ Exc</a>
+                                    <a href="{% url 'editar_lote_mtc' bobina.mtc.id %}" class="btn btn-warning text-dark px-2 py-0" style="font-size: 0.70rem; font-weight: bold;">✏️ Edit</a>
                                 </div>
                             {% endif %}
-                        </td>
-                        
-                        <td class="text-center">
-                            <span class="text-muted" style="font-size: 0.80rem;">
-                                R: <strong>{{ bobina.resistencia|default:"-" }}</strong> | 
-                                E: <strong>{{ bobina.escoamento|default:"-" }}</strong> | 
-                                AL: <strong>{{ bobina.alongamento|default:"-" }}%</strong>
-                            </span>
-                        </td>
-
-                        <td>{{ bobina.peso_inicial }} kg</td>
-                        <td class="text-success fw-bold">{{ bobina.saldo_atual }} kg</td>
-                        
-                        <td>
-                            <span class="badge bg-light text-dark border">
-                                👤 {{ bobina.usuario_cadastro.username|default:"Sistema" }}
-                            </span>
-                        </td>
-
-                        <td>
-                            {% if bobina.status_dinamico == 'Aberta' %}
-                                <span class="badge bg-success">Aberta</span>
-                            {% elif bobina.status_dinamico == 'Fechada' %}
-                                <span class="badge bg-secondary">Fechada</span>
-                            {% else %}
-                                <span class="badge bg-danger">Finalizada</span>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="text-end pe-4">
-                            <div class="d-flex flex-column gap-1 align-items-end">
-                                <button type="button" class="btn btn-sm btn-dark fw-bold shadow-sm" style="font-size: 0.75rem;" title="Configuração futura de impressão">
-                                    🖨️ Etiqueta
-                                </button>
-                                <a href="{% url 'registrar_consumo' %}?bobina={{ bobina.id }}" class="btn btn-sm btn-info fw-bold text-dark shadow-sm" style="font-size: 0.75rem;">
-                                    Histórico / Consumo
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
-                            <p class="fs-5 mb-0">Nenhuma bobina encontrada com o filtro selecionado.</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </td>
+                    
+                    <td class="text-muted" style="font-size: 0.80rem;">
+                        R: <strong>{{ bobina.resistencia }}</strong> | E: <strong>{{ bobina.escoamento }}</strong> | AL: <strong>{{ bobina.alongamento }}%</strong>
+                    </td>
+                    
+                    <td>{{ bobina.peso_inicial }} kg</td>
+                    
+                    <td class="fw-bold {% if bobina.saldo_atual > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ bobina.saldo_atual }} kg
+                    </td>
+                    
+                    <td>
+                        <span class="badge bg-light text-dark border" style="font-size: 0.75rem;">👤 {{ bobina.usuario_cadastro.username|default:"Sistema" }}</span>
+                    </td>
+                    
+                    <td>
+                        {% if bobina.saldo_atual == 0 %}
+                            <span class="badge bg-secondary">Esgotada</span>
+                        {% elif bobina.saldo_atual == bobina.peso_inicial %}
+                            <span class="badge bg-secondary">Fechada</span>
+                        {% else %}
+                            <span class="badge bg-success">Aberta</span>
+                        {% endif %}
+                    </td>
+                    
+                    <td>
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <a href="{% url 'imprimir_etiqueta' bobina.id %}" target="_blank" class="btn btn-dark btn-sm px-3 py-0 fw-bold" style="font-size: 0.75rem;">🏷️ Etiqueta</a>
+                            
+                            <a href="{% url 'registrar_consumo' %}?bobina={{ bobina.id }}" class="btn btn-info text-white btn-sm px-2 py-0 fw-bold shadow-sm" style="font-size: 0.75rem; background-color: #0dcaf0; border: none;">Histórico / Consumo</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        Nenhuma bobina encontrada nesta categoria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}

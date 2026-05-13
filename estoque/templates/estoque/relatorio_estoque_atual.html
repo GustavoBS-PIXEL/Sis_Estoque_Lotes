@@ -1,0 +1,117 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<style>
+    /* MÁGICA DA IMPRESSÃO: O que acontece quando o usuário aperta Ctrl+P */
+    @media print {
+        /* Esconde a barra superior, a gaveta lateral, e tudo que tiver a classe 'no-print' */
+        nav.navbar, #sidebarMenu, .offcanvas-backdrop, .no-print {
+            display: none !important;
+        }
+        /* Tira as sombras e bordas coloridas para economizar tinta */
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        /* Força o fundo branco */
+        body {
+            background-color: white !important;
+        }
+        /* Mostra um cabeçalho de impressão que normalmente fica escondido */
+        .print-header {
+            display: block !important;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    }
+    
+    /* Esconde o cabeçalho de impressão na tela normal do PC */
+    .print-header {
+        display: none;
+    }
+</style>
+
+<div class="print-header">
+    <h2>PDA Indústria - Sistema de Gestão</h2>
+    <h4>Relatório de Posição de Estoque (Bobinas Ativas)</h4>
+    <p>Gerado em: {% now "d/m/Y H:i" %} | Usuário: {{ user.username }}</p>
+    <hr>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <h2 class="mb-0">📊 Posição Atual de Estoque</h2>
+    <div>
+        <button onclick="window.print()" class="btn btn-primary fw-bold me-2">🖨️ Imprimir Relatório</button>
+        <a href="{% url 'index' %}" class="btn btn-outline-secondary">Voltar ao Início</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4 border-secondary no-print">
+    <div class="card-body bg-light py-3">
+        <form method="GET" class="row align-items-end g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Filtrar por Tipo de Aço</label>
+                <select name="tipo_aco" class="form-select">
+                    <option value="">-- Todos os Tipos Disponíveis --</option>
+                    {% for tipo in todos_tipos %}
+                        <option value="{{ tipo.id }}" {% if tipo.id == tipo_filtro %}selected{% endif %}>
+                            {{ tipo.descricao }} ({{ tipo.espessura|floatformat:2 }}x{{ tipo.largura|floatformat:2 }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100 fw-bold">🔍 Pesquisar</button>
+            </div>
+            {% if tipo_filtro %}
+            <div class="col-md-2">
+                <a href="{% url 'relatorio_estoque_atual' %}" class="btn btn-outline-danger w-100">Limpar Filtro</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-secondary">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0">
+                <thead class="table-dark">
+                    <tr class="text-center">
+                        <th class="text-start ps-4">Descrição do Material</th>
+                        <th>Bobinas Ativas</th>
+                        <th>Peso Inicial Recebido (kg)</th>
+                        <th>Saldo Disponível (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in dados %}
+                    <tr class="text-center">
+                        <td class="text-start ps-4 fw-bold text-primary">{{ linha.tipo.descricao }}</td>
+                        <td class="fw-bold">{{ linha.qtd_bobinas }}</td>
+                        <td class="text-muted">{{ linha.peso_total }} kg</td>
+                        <td class="fw-bold text-success fs-6">{{ linha.saldo_total }} kg</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <h5>Nenhum material em estoque no momento.</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if dados %}
+                <tfoot class="table-light fw-bold fs-5 text-center">
+                    <tr>
+                        <td class="text-end pe-4 text-uppercase">Total Geral na Fábrica:</td>
+                        <td class="text-primary">{{ total_geral_bobinas }}</td>
+                        <td>-</td>
+                        <td class="text-success">{{ total_geral_saldo }} kg</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

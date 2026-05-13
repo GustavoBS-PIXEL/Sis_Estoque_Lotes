@@ -5,9 +5,10 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('estoque.urls')), # O seu app de estoque
+    path('', include('estoque.urls')),
 ]
 
-# NOVO: Só adiciona essa rota de arquivos se o sistema estiver em modo de Desenvolvimento (DEBUG)
+# Esta lógica é vital: ela diz ao Django para servir os arquivos da pasta MEDIA_ROOT
+# sempre que a URL começar com MEDIA_URL (ex: /media/)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

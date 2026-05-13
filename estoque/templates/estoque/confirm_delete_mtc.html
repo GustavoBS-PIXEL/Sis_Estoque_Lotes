@@ -1,0 +1,37 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">⚠️ Atenção: Exclusão Crítica!</h4>
+            </div>
+            <div class="card-body text-center py-4">
+                <h5 class="card-title">Você está prestes a apagar o Lote / MTC:</h5>
+                <h3 class="text-danger my-3">{{ mtc.num_controle }} - {{ mtc.fornecedor.nome }}</h3>
+                
+                {% if tem_consumo %}
+                    <div class="alert alert-danger text-start mx-3 my-4 fw-bold">
+                        ❌ Ação Bloqueada:<br><br>
+                        As bobinas pertencentes a este MTC já contem movimentações cadastradas, elas devem ser excluídas para que você possa continuar com a exclusão do MTC.
+                    </div>
+                    <a href="{% url 'editar_lote_mtc' mtc.id %}" class="btn btn-secondary px-4">Voltar para o Lote</a>
+                {% else %}
+                    <div class="alert alert-warning text-start mx-3 my-4">
+                        <strong>AVISO IMPORTANTE:</strong><br>
+                        Apagar este MTC também apagará permanentemente <strong>todas as bobinas vazias</strong> vinculadas a ele.<br><br>
+                        Esta ação é irreversível e o seu usuário ficará registrado no painel de Auditoria.
+                    </div>
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <a href="{% url 'editar_lote_mtc' mtc.id %}" class="btn btn-secondary me-2 px-4">Cancelar e Voltar</a>
+                        <button type="submit" class="btn btn-danger fw-bold px-4">Sim, Apagar MTC</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

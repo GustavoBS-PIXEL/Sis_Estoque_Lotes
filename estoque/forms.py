@@ -1,7 +1,10 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Fornecedor, Bobina, Consumo, MTC
+from .models import Fornecedor, Bobina, Consumo, MTC, TipoAco, TipoConsumo
 
+# ==========================================
+# CADASTROS AUXILIARES
+# ==========================================
 class FornecedorForm(forms.ModelForm):
     class Meta:
         model = Fornecedor
@@ -12,16 +15,36 @@ class FornecedorForm(forms.ModelForm):
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+class TipoAcoForm(forms.ModelForm):
+    class Meta:
+        model = TipoAco
+        fields = ['descricao', 'largura', 'espessura', 'liga_metalica', 'ativo']
+        widgets = {
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Bobina Fina Frio'}),
+            'largura': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'espessura': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'liga_metalica': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: SAE 1008'}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class TipoConsumoForm(forms.ModelForm):
+    class Meta:
+        model = TipoConsumo
+        fields = ['descricao']
+        widgets = {
+            'descricao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Corte Plasma, Prensa, etc.'}),
+        }
+
+# ==========================================
+# NÚCLEO DO SISTEMA (MTC E BOBINAS)
+# ==========================================
 class MTCForm(forms.ModelForm):
     class Meta:
         model = MTC
         fields = ['num_controle', 'data_recebimento', 'fornecedor', 'arquivo']
         widgets = {
             'num_controle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: NF 12345 ou GZ-08'}),
-            
-            # A CORREÇÃO MÁGICA ESTÁ AQUI ABAIXO (format='%Y-%m-%d')
             'data_recebimento': forms.DateInput(format='%Y-%m-%d', attrs={'class': 'form-control', 'type': 'date'}),
-            
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
             'arquivo': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,image/*'}),
         }
@@ -31,7 +54,7 @@ class BobinaForm(forms.ModelForm):
         initial=1, 
         min_value=1, 
         max_value=2,
-        required=False, # <--- A CORREÇÃO MÁGICA AQUI
+        required=False,
         label='Dividir em (Qtd)',
         widget=forms.NumberInput(attrs={'class': 'form-control', 'style': 'max-width: 100px;'})
     )
@@ -54,6 +77,9 @@ BobinaFormSet = inlineformset_factory(
     can_delete=True 
 )
 
+# ==========================================
+# CONSUMO E APONTAMENTO
+# ==========================================
 class ConsumoForm(forms.ModelForm):
     class Meta:
         model = Consumo

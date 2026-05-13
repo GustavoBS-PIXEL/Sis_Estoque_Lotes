@@ -2,10 +2,10 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mb-0">🏢 Fornecedores Cadastrados</h2>
+    <h2 class="mb-0">🔩 Tipos de Aço</h2>
     <div class="d-flex gap-2">
         {% if user.perfil.tipo != 'VISUALIZADOR' %}
-            <a href="{% url 'cadastrar_fornecedor' %}" class="btn btn-primary fw-bold">+ Novo Fornecedor</a>
+            <a href="{% url 'cadastrar_tipo_aco' %}" class="btn btn-primary fw-bold">+ Novo Tipo de Aço</a>
         {% endif %}
         <a href="{% url 'index' %}" class="btn btn-outline-secondary">Voltar ao Início</a>
     </div>
@@ -17,8 +17,10 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-4">Nome do Fornecedor</th>
-                        <th class="text-center">Origem</th>
+                        <th class="ps-4">Descrição</th>
+                        <th class="text-center">Espessura (mm)</th>
+                        <th class="text-center">Largura (mm)</th>
+                        <th class="text-center">Liga Metálica</th>
                         <th class="text-center">Status</th>
                         {% if user.perfil.tipo != 'VISUALIZADOR' %}
                             <th class="text-center">Ações</th>
@@ -26,18 +28,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for fornecedor in fornecedores %}
+                    {% for tipo in tipos %}
                     <tr>
-                        <td class="ps-4 fw-bold">{{ fornecedor.nome }}</td>
+                        <td class="ps-4 fw-bold">{{ tipo.descricao }}</td>
+                        <td class="text-center">{{ tipo.espessura|floatformat:2 }}</td>
+                        <td class="text-center">{{ tipo.largura|floatformat:2 }}</td>
+                        <td class="text-center">{{ tipo.liga_metalica }}</td>
                         <td class="text-center">
-                            {% if fornecedor.nacional %}
-                                <span class="badge bg-success">Nacional</span>
-                            {% else %}
-                                <span class="badge bg-info text-dark">Internacional</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if fornecedor.ativo %}
+                            {% if tipo.ativo %}
                                 <span class="badge bg-primary">Ativo</span>
                             {% else %}
                                 <span class="badge bg-danger">Inativo</span>
@@ -47,15 +45,15 @@
                         {% if user.perfil.tipo != 'VISUALIZADOR' %}
                             <td>
                                 <div class="d-flex justify-content-center gap-2">
-                                    <a href="{% url 'editar_fornecedor' fornecedor.id %}" class="btn btn-sm btn-outline-warning text-dark fw-bold px-3">✏️ Editar</a>
-                                    <a href="{% url 'excluir_fornecedor' fornecedor.id %}" class="btn btn-sm btn-outline-danger text-danger fw-bold px-3">✖️ Exc</a>
+                                    <a href="{% url 'editar_tipo_aco' tipo.id %}" class="btn btn-sm btn-outline-warning text-dark fw-bold px-3">✏️ Editar</a>
+                                    <a href="{% url 'excluir_tipo_aco' tipo.id %}" class="btn btn-sm btn-outline-danger text-danger fw-bold px-3">✖️ Exc</a>
                                 </div>
                             </td>
                         {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center py-4 text-muted">Nenhum fornecedor cadastrado ainda.</td>
+                        <td colspan="6" class="text-center py-4 text-muted">Nenhum tipo de aço cadastrado ainda.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

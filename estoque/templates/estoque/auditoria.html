@@ -1,0 +1,81 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">📊 Histórico de Auditoria</h2>
+        <p class="text-muted small mb-0">Rastreamento completo de todas as alterações realizadas no sistema.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-outline-dark fw-bold">🖨️ Imprimir Log</button>
+        <a href="{% url 'index' %}" class="btn btn-outline-secondary">Voltar ao Início</a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-secondary">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr class="text-center">
+                        <th class="ps-4 text-start">Data e Hora</th>
+                        <th>Usuário</th>
+                        <th>Módulo</th>
+                        <th>Ação</th>
+                        <th>Identificador / Item</th>
+                        <th class="text-start">Detalhes Adicionais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr class="text-center" style="font-size: 0.9rem;">
+                        <td class="ps-4 text-start fw-bold">{{ registro.data_hora|date:"d/m/Y H:i" }}</td>
+                        
+                        <td>
+                            <span class="badge bg-light text-dark border">👤 {{ registro.usuario.username }}</span>
+                        </td>
+                        
+                        <td class="fw-bold text-muted">{{ registro.tabela_afetada }}</td>
+                        
+                        <td>
+                            {% if registro.acao == 'CRIACAO' %}
+                                <span class="badge bg-success px-3">CRIACAO</span>
+                            {% elif registro.acao == 'ALTERACAO' %}
+                                <span class="badge bg-warning text-dark px-3">ALTERACAO</span>
+                            {% elif registro.acao == 'EXCLUSAO' %}
+                                <span class="badge bg-danger px-3">EXCLUSAO</span>
+                            {% else %}
+                                <span class="badge bg-secondary px-3">{{ registro.acao }}</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="fw-bold">{{ registro.identificador }}</td>
+                        
+                        <td class="text-start text-muted small">
+                            {{ registro.detalhes|default:"---" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <h5>Nenhum registro de auditoria encontrado.</h5>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        nav.navbar, #sidebarMenu, .offcanvas-backdrop, .btn, .text-muted.small {
+            display: none !important;
+        }
+        .card { border: none !important; }
+        table { font-size: 10pt !important; }
+        .badge { border: 1px solid #000 !important; color: #000 !important; background: none !important; }
+    }
+</style>
+{% endblock %}

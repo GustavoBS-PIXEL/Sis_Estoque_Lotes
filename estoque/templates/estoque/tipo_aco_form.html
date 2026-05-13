@@ -1,0 +1,44 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{% if editando %}✏️ Editar Tipo de Aço{% else %}🔩 Novo Tipo de Aço{% endif %}</h5>
+                <a href="{% url 'lista_tipos_aco' %}" class="btn btn-sm btn-outline-light">Cancelar</a>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ form.descricao.label }}</label>
+                        {{ form.descricao }}
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ form.espessura.label }} (mm)</label>
+                            {{ form.espessura }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ form.largura.label }} (mm)</label>
+                            {{ form.largura }}
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">{{ form.liga_metalica.label }}</label>
+                        {{ form.liga_metalica }}
+                    </div>
+                    <div class="form-check mb-4">
+                        {{ form.ativo }}
+                        <label class="form-check-label fw-bold" for="{{ form.ativo.id_for_label }}">
+                            Ativo (Aparece nas listagens)
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 fw-bold">Salvar Tipo de Aço</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
