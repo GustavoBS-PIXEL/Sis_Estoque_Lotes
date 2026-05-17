@@ -41,16 +41,23 @@
                 <button class="btn btn-outline-light me-3 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
                     <span class="fs-4">☰</span>
                 </button>
-                <a class="navbar-brand fw-bold" href="{% url 'index' %}">PDA Indústria</a>
+                <a class="navbar-brand fw-bold" href="{% url 'index' %}">PDA - Sistema de Gestão de Estoque de Aço</a>
             </div>
-            
             <div class="d-flex align-items-center">
                 {% if user.is_authenticated %}
-                    <div class="me-3 text-end d-none d-md-block">
-                        <span class="text-light d-block small">Olá, <strong class="text-warning">{{ user.username }}</strong></span>
-                        {% if user.perfil %}
-                            <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ user.perfil.tipo }}</span>
-                        {% endif %}
+                    <div class="d-none d-md-flex align-items-center gap-3 me-3">
+                        
+                        <button type="button" class="btn btn-outline-light d-flex align-items-center py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalPesquisaBobina" title="Pesquisar Bobina (F2)" id="btnAbrirPesquisa">
+                            <span class="me-2">🔍</span> <span>Pesquisar</span>
+                        </button>
+                        
+                        <div class="text-end" style="line-height: 1.2;">
+                            <span class="text-light d-block small mb-1">Olá, <strong class="text-warning">{{ user.username }}</strong></span>
+                            {% if user.perfil %}
+                                <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ user.perfil.tipo }}</span>
+                            {% endif %}
+                        </div>
+
                     </div>
                 {% endif %}
             </div>
@@ -93,11 +100,150 @@
         </div>
     </div>
 
+    <div class="container-fluid px-4 mt-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
     <div class="container-fluid px-4">
         {% block content %}
         {% endblock %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="modal fade" id="modalPesquisaBobina" tabindex="-1" aria-labelledby="modalPesquisaBobinaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title" id="modalPesquisaBobinaLabel">🔍 Pesquisar Bobina / Corrida</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="input-group mb-3 shadow-sm">
+            <span class="input-group-text bg-white border-end-0">🔎</span>
+            <input type="text" id="inputPesquisaCorrida" class="form-control border-start-0 fs-5 py-2" placeholder="Digite a corrida ou bip o código de barras...">
+        </div>
+        
+        <div id="loadingPesquisa" class="text-center d-none my-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">A procurar no inventário...</p>
+        </div>
+        
+        <div class="table-responsive d-none" id="tabelaResultadosContainer">
+            <table class="table table-hover table-bordered bg-white shadow-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Corrida</th>
+                        <th>Aço / Dimensão</th>
+                        <th>Data</th>
+                        <th>Peso (kg)</th>
+                        <th>Saldo (kg)</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoResultadosPesquisa">
+                    </tbody>
+            </table>
+        </div>
+        <div id="mensagemSemResultados" class="alert alert-warning d-none mt-2">
+            Nenhuma bobina encontrada com este código.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalPesquisa = document.getElementById('modalPesquisaBobina');
+    const inputPesquisa = document.getElementById('inputPesquisaCorrida');
+    const loadingDiv = document.getElementById('loadingPesquisa');
+    const tabelaContainer = document.getElementById('tabelaResultadosContainer');
+    const corpoResultados = document.getElementById('corpoResultadosPesquisa');
+    const msgSemResultados = document.getElementById('mensagemSemResultados');
+    
+    let timerBusca;
+
+    // 1. Dar foco automático no campo assim que o modal abrir
+    modalPesquisa.addEventListener('shown.bs.modal', function () {
+        inputPesquisa.focus();
+        inputPesquisa.select();
+    });
+
+    // 2. Limpar tudo quando fechar
+    modalPesquisa.addEventListener('hidden.bs.modal', function () {
+        inputPesquisa.value = '';
+        tabelaContainer.classList.add('d-none');
+        msgSemResultados.classList.add('d-none');
+    });
+
+    // 3. Ouvir o que o utilizador digita (com pequeno atraso para não travar o servidor)
+    inputPesquisa.addEventListener('input', function() {
+        clearTimeout(timerBusca);
+        const termo = this.value.trim();
+        
+        if (termo.length < 2) {
+            tabelaContainer.classList.add('d-none');
+            msgSemResultados.classList.add('d-none');
+            return;
+        }
+
+        // Aguarda 400ms após o utilizador parar de digitar para buscar
+        timerBusca = setTimeout(() => buscarBobinas(termo), 400);
+    });
+
+    async function buscarBobinas(termo) {
+        loadingDiv.classList.remove('d-none');
+        tabelaContainer.classList.add('d-none');
+        msgSemResultados.classList.add('d-none');
+
+        try {
+            const resposta = await fetch(`/api/pesquisar-bobina/?q=${encodeURIComponent(termo)}`);
+            const dados = await resposta.json();
+
+            if (dados.sucesso && dados.resultados.length > 0) {
+                corpoResultados.innerHTML = ''; // Limpa resultados antigos
+                
+                dados.resultados.forEach(bobina => {
+                    // Cria a linha da tabela clicável
+                    const tr = document.createElement('tr');
+                    tr.style.cursor = 'pointer';
+                    // Ao clicar, redireciona para o index passando o ID para destacar
+                    tr.onclick = () => window.location.href = `${bobina.url_redirecionamento}?destaque_id=${bobina.id}`;
+                    
+                    // Lógica visual: se o saldo for zero, fica acinzentado
+                    let corSaldo = bobina.saldo <= 0 ? 'text-danger' : 'text-success fw-bold';
+                    let trClass = bobina.saldo <= 0 ? 'table-secondary text-muted' : '';
+                    tr.className = trClass;
+
+                    tr.innerHTML = `
+                        <td class="fw-bold">${bobina.corrida}</td>
+                        <td>${bobina.tipo_aco}</td>
+                        <td>${bobina.data}</td>
+                        <td>${bobina.peso}</td>
+                        <td class="${corSaldo}">${bobina.saldo}</td>
+                    `;
+                    corpoResultados.appendChild(tr);
+                });
+                
+                tabelaContainer.classList.remove('d-none');
+            } else {
+                msgSemResultados.classList.remove('d-none');
+            }
+        } catch (erro) {
+            console.error("Erro na pesquisa:", erro);
+        } finally {
+            loadingDiv.classList.add('d-none');
+        }
+    }
+});
+</script>
+
+
 </body>
 </html>

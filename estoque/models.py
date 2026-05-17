@@ -157,3 +157,19 @@ class RegistroAuditoria(models.Model):
 
     def __str__(self):
         return f"{self.data_hora|date:'d/m/Y H:i'} - {self.usuario} - {self.acao} {self.tabela_afetada}"
+    
+class RelatorioDivergenciaIA(models.Model):
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente de Análise'),
+        ('RESOLVIDO', 'Ajustado no Prompt / Resolvido'),
+        ('DESCARTADO', 'Erro do Operador (Ignorar)'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    numero_mtc = models.CharField("Número do MTC", max_length=100)
+    detalhes_erro = models.TextField("O que a IA errou e como deveria ser?")
+    data_reporte = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+
+    def __str__(self):
+        return f"Divergência MTC: {self.numero_mtc} - {self.get_status_display()}"

@@ -5,6 +5,9 @@ from . import views
 urlpatterns = [
     path('', views.index, name='index'),
     path('tipo-aco/<int:tipo_id>/', views.detalhe_tipo_aco, name='detalhe_tipo'),
+    path('api/leitura-mtc/', views.api_leitura_mtc, name='api_leitura_mtc'),
+    path('api/pesquisar-bobina/', views.api_pesquisar_bobina, name='api_pesquisar_bobina'),
+    path('api/reportar-erro-ia/', views.api_reportar_erro_ia, name='api_reportar_erro_ia'),
     
     # ROTAS DE FORNECEDOR
     path('fornecedores/', views.lista_fornecedores, name='lista_fornecedores'),

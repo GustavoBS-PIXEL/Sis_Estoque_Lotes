@@ -40,7 +40,7 @@
             </thead>
             <tbody>
                 {% for bobina in bobinas %}
-                <tr class="text-center" style="font-size: 0.9rem;">
+                <tr id="linha-bobina-{{ bobina.id }}" class="text-center" style="font-size: 0.9rem;">
                     <td>{{ bobina.mtc.data_recebimento|date:"d/m/Y" }}</td>
                     
                     <td class="fw-bold">{{ bobina.corrida }}</td>
@@ -104,4 +104,32 @@
         </table>
     </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Verifica se o URL contém a ordem de destaque (ex: ?destaque_id=45)
+    const urlParams = new URLSearchParams(window.location.search);
+    const destaqueId = urlParams.get('destaque_id');
+
+    if (destaqueId) {
+        // Procura a linha exata da bobina na tabela
+        const linhaDestacada = document.getElementById('linha-bobina-' + destaqueId);
+        
+        if (linhaDestacada) {
+            // 1. Rola o ecrã suavemente até centrar a bobina na visão do operador
+            linhaDestacada.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 2. Aplica as classes do Bootstrap para dar o destaque (fundo amarelo e negrito)
+            linhaDestacada.classList.add('table-warning', 'fw-bold');
+            
+            // 3. Remove o destaque após 4 segundos para a tabela voltar ao normal
+            setTimeout(() => {
+                linhaDestacada.classList.remove('table-warning', 'fw-bold');
+            }, 4000);
+            
+            // Limpa o URL na barra de endereços para não voltar a destacar se o usuário apertar F5
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+});
+</script>
 {% endblock %}

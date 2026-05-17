@@ -43,6 +43,13 @@
                     <button type="button" class="btn btn-sm w-100 mt-2 fw-bold text-white shadow-sm" style="background-color: #6f42c1; border-color: #6f42c1;" id="btn-ia-leitura">
                         🧠 Leitura Inteligente do MTC
                     </button>
+                    <div id="alerta-ia" class="alert alert-warning mt-2 p-2 mb-0 align-items-start shadow-sm d-none" role="alert" style="font-size: 0.8rem; line-height: 1.2; display: flex;">
+                        <span class="me-2 fs-5">⚠️</span>
+                        <div>
+                            <strong>Atenção:</strong> A Inteligência Artificial pode cometer erros. 
+                            <span class="text-danger fw-bold">É obrigatório</span> conferir os dados antes de salvar.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -108,11 +115,16 @@
             <button type="button" class="btn btn-outline-secondary fw-bold" id="btn-add-linha">
                 ➕ Adicionar Linha
             </button>
-            <button type="submit" class="btn btn-success fw-bold px-5 py-2">
-                Salvar Alterações
-            </button>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-warning fw-bold d-none" id="btn-reportar-ia" data-bs-toggle="modal" data-bs-target="#modalReportarIA">
+                    ⚠️ Salvar reportando erro da IA
+                </button>
+                <button type="submit" class="btn btn-success fw-bold px-4 py-2" id="btn-salvar-principal">
+                    Salvar Alterações
+                </button>
+            </div>
         </div>
-    </div>
+
 </form>
 
 <div id="empty-form-template" class="d-none">
@@ -151,14 +163,171 @@
   </div>
 </div>
 
+<div class="modal fade" id="modalReportarIA" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold">⚠️ Reportar Erro da IA</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-2">Descreva brevemente qual campo a IA preencheu incorretamente na tela (ex: "Na linha 3, o aço puxado foi 410S mas o PDF dizia 304L").</p>
+        <textarea id="texto-erro-ia" class="form-control" rows="4" placeholder="Escreva os detalhes do erro aqui..."></textarea>
+      </div>
+      <div class="modal-footer justify-content-end">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning fw-bold shadow-sm" id="btn-confirmar-reporte">
+            Enviar Relatório e Salvar Lote
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // --- 1. LÓGICA DO BOTÃO DE IA ---
-        document.getElementById('btn-ia-leitura').addEventListener('click', function() {
-            alert("A API de Inteligência Artificial para leitura automática de PDFs será integrada em breve nesta função!");
-        });
+        const btnLerIA = document.getElementById('btn-ia-leitura'); 
+        const inputArquivo = document.getElementById('id_arquivo'); 
+        
+        function selecionarPorTexto(selectElement, textoDesejado) {
+            if (!selectElement || !textoDesejado) return;
+            
+            // Converte para string e limpa os espaços em branco nas pontas
+            let textoBusca = String(textoDesejado).toUpperCase().trim();
 
-        // --- 2. LÓGICA DO FORMULÁRIO DINÂMICO (ADICIONAR/REMOVER) ---
+            for (let i = 0; i < selectElement.options.length; i++) {
+                let textoOpcao = selectElement.options[i].text.toUpperCase().trim();
+                
+                // 🟢 CORREÇÃO CRÍTICA: Ignora as opções vazias padrão do Django
+                if (textoOpcao === '' || textoOpcao === '---------' || textoOpcao.includes('SELECIONE')) {
+                    continue; 
+                }
+                
+                // Verifica se há match
+                if (textoOpcao.includes(textoBusca) || textoBusca.includes(textoOpcao)) {
+                    selectElement.selectedIndex = i;
+                    return; 
+                }
+            }
+        }
+
+        const campoNota = document.getElementById('id_num_controle');
+        const campoData = document.getElementById('id_data_recebimento');
+        const campoFornecedor = document.getElementById('id_fornecedor');
+
+        if (campoData && !campoData.value) {
+            const dataLocal = new Date();
+            const ano = dataLocal.getFullYear();
+            const mes = String(dataLocal.getMonth() + 1).padStart(2, '0');
+            const dia = String(dataLocal.getDate()).padStart(2, '0');
+            campoData.value = `${ano}-${mes}-${dia}`;
+        }
+
+        if (btnLerIA) {
+            btnLerIA.addEventListener('click', async function(e) {
+                e.preventDefault(); 
+
+                if (!inputArquivo.files || inputArquivo.files.length === 0) {
+                    alert('Por favor, anexe o arquivo PDF do MTC primeiro!');
+                    return;
+                }
+
+                const textoOriginal = btnLerIA.innerHTML;
+                btnLerIA.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando MTC...';
+                btnLerIA.disabled = true;
+
+                let formData = new FormData();
+                formData.append('arquivo', inputArquivo.files[0]);
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                try {
+                    const resposta = await fetch("{% url 'api_leitura_mtc' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData
+                    });
+
+                    const resultado = await resposta.json();
+
+                    if (resultado.sucesso) {
+                        const dados = resultado.dados;
+                        
+                        // 1. Preenche o Cabeçalho
+                        if(campoNota) campoNota.value = dados.num_controle || '';
+                        selecionarPorTexto(campoFornecedor, dados.fornecedor);
+
+                        // 2. Prepara a lista final
+                        let linhasParaPreencher = [];
+
+                        if (dados.bobinas && dados.bobinas.length > 0) {
+                            dados.bobinas.forEach(bobina => {
+                                let pesoBruto = bobina.peso_inicial || 0;
+                                let corridaBase = bobina.corrida || '';
+
+                                if (pesoBruto > 5000) {
+                                    let peso1 = Math.round(pesoBruto / 2);
+                                    let peso2 = pesoBruto - peso1;
+
+                                    linhasParaPreencher.push({
+                                        ...bobina,
+                                        corrida: corridaBase + "-1",
+                                        peso_inicial: peso1
+                                    });
+                                    linhasParaPreencher.push({
+                                        ...bobina,
+                                        corrida: corridaBase + "-2",
+                                        peso_inicial: peso2
+                                    });
+                                } else {
+                                    linhasParaPreencher.push(bobina);
+                                }
+                            });
+
+                            // 3. Preenche a tela dinamicamente
+                            linhasParaPreencher.forEach((linhaDados, index) => {
+                                if (index > 0) {
+                                    document.getElementById('btn-add-linha').click();
+                                }
+
+                                const campoCorrida = document.querySelector(`[id$="-${index}-corrida"]`);
+                                const campoTipoAco = document.querySelector(`[id$="-${index}-tipo_aco"]`);
+                                const campoPeso = document.querySelector(`[id$="-${index}-peso_inicial"]`);
+                                const campoEscoamento = document.querySelector(`[id$="-${index}-escoamento"]`);
+                                const campoResistencia = document.querySelector(`[id$="-${index}-resistencia"]`);
+                                const campoAlongamento = document.querySelector(`[id$="-${index}-alongamento"]`);
+
+                                if(campoCorrida) campoCorrida.value = linhaDados.corrida || '';
+                                if(campoPeso) campoPeso.value = linhaDados.peso_inicial || '';
+                                if(campoEscoamento) campoEscoamento.value = linhaDados.escoamento || '';
+                                if(campoResistencia) campoResistencia.value = linhaDados.resistencia || '';
+                                if(campoAlongamento) campoAlongamento.value = linhaDados.alongamento || '';
+                                
+                                // 🟢 PLANO B ATIVADO: Tenta puxar o aço da linha. Se a IA tiver esquecido, puxa do cabeçalho geral
+                                let acoDestaLinha = linhaDados.tipo_aco || dados.tipo_aco;
+                                selecionarPorTexto(campoTipoAco, acoDestaLinha);
+                            });
+                            document.getElementById('alerta-ia').classList.remove('d-none');
+                            document.getElementById('btn-reportar-ia').classList.remove('d-none');
+
+                            alert(`Sucesso! Foram processadas ${linhasParaPreencher.length} bobinas na tela.`);
+                        } else {
+                            alert('A IA leu o documento, mas não conseguiu encontrar as bobinas.');
+                        }
+                    } else {
+                        alert('Erro: ' + resultado.erro);
+                    }
+                } catch (erro) {
+                    alert('Erro na comunicação com o servidor.');
+                    console.error(erro);
+                } finally {
+                    btnLerIA.innerHTML = textoOriginal;
+                    btnLerIA.disabled = false;
+                }
+            });
+        }
+
+        // --- 2. LÓGICA DO FORMULÁRIO DINÂMICO (ADICIONAR/REMOVER LINHAS) ---
         const btnAdd = document.getElementById('btn-add-linha');
         const container = document.getElementById('bobinas-container');
         const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
@@ -168,21 +337,16 @@
         const modalElement = document.getElementById('modalExcluirBobina');
         const modal = new bootstrap.Modal(modalElement);
 
-        // ADICIONAR LINHA
         btnAdd.addEventListener('click', function() {
             let formCount = parseInt(totalFormsInput.value);
             let template = document.getElementById('empty-form-template').innerHTML;
-            
             let newRowHtml = template.replace(/__prefix__/g, formCount);
-            
             container.insertAdjacentHTML('beforeend', newRowHtml);
             totalFormsInput.value = formCount + 1; 
         });
 
-        // DELETAR LINHA
         container.addEventListener('click', function(e) {
             const btnDelete = e.target.closest('.btn-delete-bobina');
-            
             if (btnDelete) {
                 e.preventDefault();
                 linhaParaExcluir = btnDelete.closest('.bobina-row');
@@ -191,7 +355,6 @@
             }
         });
 
-        // CONFIRMAR DELEÇÃO NO MODAL
         document.getElementById('btnConfirmarExclusao').addEventListener('click', function() {
             if(linhaParaExcluir) {
                 if(checkboxParaMarcar) {
@@ -203,6 +366,57 @@
             }
             modal.hide();
         });
+
+        // --- 🟢 LÓGICA DO REPORTE DE ERRO DA IA ---
+        const btnConfirmarReporte = document.getElementById('btn-confirmar-reporte');
+        if (btnConfirmarReporte) {
+            btnConfirmarReporte.addEventListener('click', async function() {
+                const textoErro = document.getElementById('texto-erro-ia').value.trim();
+                const campoNota = document.getElementById('id_num_controle');
+                const numMTC = campoNota ? campoNota.value : 'N/A';
+                
+                if (!textoErro) {
+                    alert("Por favor, descreva rapidamente o erro antes de enviar.");
+                    return;
+                }
+
+                // Desativa o botão para evitar duplos cliques
+                const originalText = this.innerHTML;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando...';
+                this.disabled = true;
+
+                try {
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    const response = await fetch('/api/reportar-erro-ia/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            numero_mtc: numMTC,
+                            detalhes_erro: textoErro
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.sucesso) {
+                        // O relatório foi guardado em silêncio! Agora submetemos o formulário principal verde.
+                        document.getElementById('formLote').submit();
+                    } else {
+                        alert('Não foi possível gravar o reporte: ' + data.erro);
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert('Erro de comunicação com o servidor.');
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

@@ -1,14 +1,47 @@
+# --- IMPORTS DO DJANGO ---
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.conf import settings
+from django.db.models import F
+from django.urls import reverse
+from django.contrib import messages
+
+# --- IMPORTS DO SEU PROJETO ---
+from .models import TipoAco, Bobina, Fornecedor, Consumo, RegistroAuditoria, MTC, TipoConsumo, Bobina, RelatorioDivergenciaIA
+from .forms import FornecedorForm, BobinaFormSet, ConsumoForm, MTCForm, TipoAcoForm, TipoConsumoForm
+
+# --- IMPORTS DE UTILITÁRIOS (QR Code, Matemática, etc) ---
 import math
 import qrcode
 from io import BytesIO
 import base64
-from django.db.models import F
+import os
+import json
+from dotenv import load_dotenv
+
+# --- IMPORTS DA IA DO GOOGLE (NOVA VERSÃO) ---
+from google import genai
+from google.genai import types
+
+# Força o Python a procurar o .env na raiz correta do projeto
+caminho_env = os.path.join(settings.BASE_DIR, '.env')
+load_dotenv(caminho_env)
+
+# Pega a chave
+minha_chave = os.getenv("GEMINI_API_KEY")
+
+client = genai.Client(api_key=minha_chave) if minha_chave else None
+
+# 🕵️‍♀️ PRINT DE INVESTIGAÇÃO (Vai aparecer no terminal)
+print("\n--- STATUS DA IA ---")
+if minha_chave:
+    print(f"✅ Chave encontrada com sucesso! (Tamanho: {len(minha_chave)} caracteres)")
+else:
+    print("❌ ALERTA: A chave NÃO foi encontrada no arquivo .env!")
+print("--------------------\n")
 
 
-from .models import TipoAco, Bobina, Fornecedor, Consumo, RegistroAuditoria, MTC, TipoConsumo
-from .forms import FornecedorForm, BobinaFormSet, ConsumoForm, MTCForm, TipoAcoForm, TipoConsumoForm
 
 # ==========================================
 # PÁGINAS PRINCIPAIS
@@ -51,8 +84,47 @@ def cadastrar_lote_mtc(request):
         formset = BobinaFormSet(request.POST)
 
         if mtc_form.is_valid() and formset.is_valid():
+            
+            # 1. 🟢 PRÉ-VALIDAÇÃO: Verificar se alguma corrida (ou suas "irmãs") já existe no banco
+            corridas_duplicadas = []
+            
+            for form in formset:
+                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                    corrida_base = form.cleaned_data.get('corrida')
+                    peso_total = int(form.cleaned_data.get('peso_inicial', 0))
+                    
+                    qtd = form.cleaned_data.get('qtd_irmas') or 1
+                    if peso_total >= 5000: qtd = 2
+                    if qtd > 2: qtd = 2
+
+                    # Monta a lista de nomes exatos que o sistema tentará salvar (-1 e -2)
+                    corridas_para_checar = []
+                    if qtd == 2:
+                        corridas_para_checar.extend([f"{corrida_base}-1", f"{corrida_base}-2"])
+                    else:
+                        corridas_para_checar.append(corrida_base)
+
+                    # Vai ao banco ver se alguma delas já existe
+                    for c in corridas_para_checar:
+                        if Bobina.objects.filter(corrida=c).exists():
+                            corridas_duplicadas.append(c)
+
+            # 2. 🟢 O SEU AVISO: Se achar duplicada, avisa e NÃO SALVA NADA!
+            if corridas_duplicadas:
+                for c in corridas_duplicadas:
+                    messages.error(request, f"O Lote de bobina {c} já foi cadastrado anteriormente.")
+                
+                # Devolve o utilizador para a tela com os dados que ele já digitou
+                return render(request, 'estoque/mtc_bobina_form.html', {
+                    'mtc_form': mtc_form, 
+                    'formset': formset, 
+                    'editando': False
+                })
+
+            # 3. 🟢 TUDO CERTO: Se passou pela nossa barreira, salva tudo!
             mtc = mtc_form.save()
             bobinas_salvas = 0
+            
             for form in formset:
                 if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                     bobina_base = form.save(commit=False)
@@ -75,7 +147,33 @@ def cadastrar_lote_mtc(request):
                         bobinas_salvas += 1
 
             RegistroAuditoria.objects.create(tabela_afetada='MTC', identificador=mtc.num_controle, acao='CRIACAO', usuario=request.user, detalhes=f"Lote criado com {bobinas_salvas} bobinas.")
+            
+            # (Opcional) Avisar que deu tudo certo no final!
+            messages.success(request, f"Lote gravado com sucesso com {bobinas_salvas} bobinas.")
             return redirect('index')
+            
+        else:
+            # 4. 🟢 CAPTURA DE ERROS PADRÃO: Se o formulário for inválido por outro motivo
+            
+            # Erros do formulário principal (MTC)
+            for error_list in mtc_form.errors.values():
+                for erro in error_list:
+                    # Intercepta a mensagem em inglês e traduz
+                    if "already exists" in erro:
+                        messages.error(request, "⚠️ Já existe um MTC cadastrado com esta mesma Identificação (NF / Container) e Data de Recebimento.")
+                    else:
+                        messages.error(request, erro)
+            
+            # Erros das bobinas
+            for form in formset:
+                # Oculta o erro padrão de duplicidade do Django para não mostrar a nossa mensagem e a dele juntas
+                if 'corrida' in form.errors:
+                    messages.error(request, "⚠️ Verifique o campo corrida: já existe uma bobina com este lote.")
+                else:
+                    for error_list in form.errors.values():
+                        for erro in error_list:
+                            messages.error(request, erro)
+
     else:
         mtc_form = MTCForm()
         formset = BobinaFormSet()
@@ -520,3 +618,147 @@ def imprimir_etiqueta(request, bobina_id):
         'relacao': relacao,
         'qr_code': qr_base64 # Passamos a imagem do QR Code pronta
     })
+
+def processar_mtc_com_ia(arquivo_pdf, lista_fornecedores, lista_acos):
+    if not client:
+        print("Erro: Cliente IA não inicializado por falta de chave.")
+        return None
+        
+    try:
+        conteudo_arquivo = arquivo_pdf.read()
+        
+        # --- AQUI É O PROMPT ENVIADO PARA O IA ---
+        prompt_dinamico = f"""
+        Você é um extrator de dados de nível industrial.
+        
+        Abaixo estão os ÚNICOS cadastros válidos do nosso sistema:
+        [FORNECEDORES PERMITIDOS]: {lista_fornecedores}
+        [TIPOS DE AÇO PERMITIDOS]: {lista_acos}
+        
+        Analise o MTC anexado. O documento pode conter produtos de dimensões diferentes misturados na mesma tabela.
+        
+        Devolva um JSON puro seguindo OBRIGATORIAMENTE esta estrutura:
+        {{
+          "num_controle": "Nota fiscal, Lote ou PO Number",
+          "fornecedor": "Copie o nome EXATO da lista de [FORNECEDORES PERMITIDOS]",
+          "bobinas": [
+            {{
+              "_rascunho_liga": "Pense passo a passo: Qual é o GRADE/Aço principal do documento (ex: 410S)?",
+              "_rascunho_dimensoes": "Pense passo a passo: Analisando ESTA linha exata, qual é a Espessura (menor valor) e o Comprimento (maior valor)?",
+              "tipo_aco": "Com base nos seus rascunhos acima, copie o nome EXATO da lista de [TIPOS DE AÇO PERMITIDOS] que corresponde a esta chapa/bobina",
+              "corrida": "Product NO ou Material ID exato desta linha",
+              "peso_inicial": 0000,
+              "escoamento": 000.0,
+              "resistencia": 000.0,
+              "alongamento": 00.0
+            }}
+          ],
+          "auditoria_matematica": {{
+            "peso_total_documento": 0000,
+            "equacao_dos_pesos": "Escreva a soma matemática de todos os pesos extraídos para provar que não omitiu nenhum. Ex: 1473 + 1473 + 1454... = 26356",
+            "soma_calculada": 0000,
+            "status": "OK ou ERRO"
+          }}
+        }}
+        
+        REGRAS DE OURO:
+        1. RASCUNHO OBRIGATÓRIO (CHAIN OF THOUGHT): 
+           - Para cada item na tabela, preencha primeiro os campos '_rascunho_liga' e '_rascunho_dimensoes'. 
+           - Lembre-se: Espessura = Menor valor numérico da dimensão. Comprimento = Maior valor numérico.
+           - Apenas depois de "pensar" nestes dois campos, faça o cruzamento e preencha o 'tipo_aco' com a opção do nosso sistema.
+           
+        2. AUTOVERIFICAÇÃO MATEMÁTICA E EQUAÇÃO (ANTI-OMISSÃO):
+           - Localize no fim da tabela do PDF o peso TOTAL e preencha em 'peso_total_documento'.
+           - Escreva de forma literal a 'equacao_dos_pesos' mostrando a soma de CADA peso da lista 'bobinas'.
+           - REGRA CRÍTICA: Se a 'soma_calculada' não for exatamente igual ao 'peso_total_documento', significa que você OMITIU linhas devido à preguiça. Se isso acontecer, refaça o processo internamente e adicione as corridas que faltam na lista até a equação matemática ficar 100% correta.
+           
+        3. O peso deve ser sempre um número inteiro em kg.
+        """
+        
+        response = client.models.generate_content(
+            model='gemini-3.1-flash-lite',
+            contents=[
+                prompt_dinamico,
+                types.Part.from_bytes(data=conteudo_arquivo, mime_type='application/pdf')
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
+        
+        dados_extraidos = json.loads(response.text)
+        return dados_extraidos
+        # --- FIM DO PASSO 3 ---
+
+    except Exception as e:
+        print(f"Erro na leitura inteligente: {e}")
+        return None
+
+@login_required
+def api_leitura_mtc(request):
+    if request.method == 'POST' and request.FILES.get('arquivo'):
+        arquivo_pdf = request.FILES['arquivo']
+        
+        # 🟢 BUSCA O "GABARITO" NO BANCO DE DADOS (Traz apenas os nomes em formato de lista)
+        lista_fornecedores = list(Fornecedor.objects.filter(ativo=True).values_list('nome', flat=True))
+        lista_acos = list(TipoAco.objects.filter(ativo=True).values_list('descricao', flat=True)) # Ajuste 'descricao' para o nome do campo real do seu model
+        
+        # Passamos o gabarito para a função da IA
+        dados = processar_mtc_com_ia(arquivo_pdf, lista_fornecedores, lista_acos)
+        
+        if dados:
+            return JsonResponse({'sucesso': True, 'dados': dados})
+        else:
+            return JsonResponse({'sucesso': False, 'erro': 'A IA não conseguiu ler os dados.'})
+            
+    return JsonResponse({'sucesso': False, 'erro': 'Requisição inválida.'})
+
+def api_pesquisar_bobina(request):
+    termo = request.GET.get('q', '').strip()
+    
+    if not termo:
+        return JsonResponse({'sucesso': True, 'resultados': []})
+    
+    # Faz a busca parcial ignorando maiúsculas/minúsculas (__icontains)
+    # Trazemos apenas as 20 primeiras para não sobrecarregar o modal
+    bobinas = Bobina.objects.filter(corrida__icontains=termo).select_related('tipo_aco')[:20]
+    
+    resultados = []
+    for b in bobinas:
+        # Pega a URL correta da tela de detalhes baseada no tipo de aço
+        link_tela_detalhes = reverse('detalhe_tipo', args=[b.tipo_aco.id]) if b.tipo_aco else '/'
+        
+        resultados.append({
+            'id': b.id,
+            'corrida': b.corrida,
+            'tipo_aco': b.tipo_aco.descricao if b.tipo_aco else 'N/A',
+            'data': b.mtc.data_recebimento.strftime('%d/%m/%Y') if hasattr(b, 'mtc') and b.mtc else '-',
+            'peso': float(b.peso_inicial),
+            'saldo': float(getattr(b, 'saldo_atual', b.peso_inicial)), 
+            'url_redirecionamento': link_tela_detalhes # 🟢 Nova variável enviada para o JavaScript
+        })
+        
+    return JsonResponse({'sucesso': True, 'resultados': resultados})
+
+def api_reportar_erro_ia(request):
+    if request.method == 'POST':
+        try:
+            # Lemos os dados que o JavaScript mandou via fetch
+            dados = json.loads(request.body)
+            numero_mtc = dados.get('numero_mtc', 'N/A')
+            detalhes_erro = dados.get('detalhes_erro', 'N/A')
+            
+            # Guardamos o erro na nossa nova tabela do banco de dados
+            RelatorioDivergenciaIA.objects.create(
+                usuario=request.user if request.user.is_authenticated else None,
+                numero_mtc=numero_mtc,
+                detalhes_erro=detalhes_erro,
+                status='PENDENTE'
+            )
+            
+            return JsonResponse({'sucesso': True})
+            
+        except Exception as e:
+            return JsonResponse({'sucesso': False, 'erro': str(e)})
+            
+    return JsonResponse({'sucesso': False, 'erro': 'Método inválido'})
