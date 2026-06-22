@@ -55,7 +55,7 @@
                     <option value="">-- Todos os Tipos Disponíveis --</option>
                     {% for tipo in todos_tipos %}
                         <option value="{{ tipo.id }}" {% if tipo.id == tipo_filtro %}selected{% endif %}>
-                            {{ tipo.descricao }} ({{ tipo.espessura|floatformat:2 }}x{{ tipo.largura|floatformat:2 }})
+                            {{ tipo.descricao }} ({{ tipo.espessura|floatformat:"2" }}x{{ tipo.largura|floatformat:"2" }})
                         </option>
                     {% endfor %}
                 </select>
@@ -89,8 +89,8 @@
                     <tr class="text-center">
                         <td class="text-start ps-4 fw-bold text-primary">{{ linha.tipo.descricao }}</td>
                         <td class="fw-bold">{{ linha.qtd_bobinas }}</td>
-                        <td class="text-muted">{{ linha.peso_total }} kg</td>
-                        <td class="fw-bold text-success fs-6">{{ linha.saldo_total }} kg</td>
+                        <td class="text-muted">{{ linha.peso_total|floatformat:"2g" }} kg</td>
+                        <td class="fw-bold text-success fs-6">{{ linha.saldo_total|floatformat:"2g" }} kg</td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -106,7 +106,7 @@
                         <td class="text-end pe-4 text-uppercase">Total Geral na Fábrica:</td>
                         <td class="text-primary">{{ total_geral_bobinas }}</td>
                         <td>-</td>
-                        <td class="text-success">{{ total_geral_saldo }} kg</td>
+                        <td class="text-success">{{ total_geral_saldo|floatformat:"2g" }} kg</td>
                     </tr>
                 </tfoot>
                 {% endif %}

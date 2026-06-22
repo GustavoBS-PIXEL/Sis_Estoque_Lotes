@@ -2,9 +2,6 @@
 venv/
 env/
 
-# Banco de Dados
-db.sqlite3
-
 # Arquivos de Upload (PDFs, Imagens)
 media/
 

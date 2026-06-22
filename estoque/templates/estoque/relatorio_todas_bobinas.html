@@ -107,8 +107,8 @@
                     <td class="fw-bold">{{ bobina.mtc.num_controle }}</td>
                     <td>{{ bobina.corrida }}</td>
                     <td class="text-start fw-bold text-primary">{{ bobina.tipo_aco.descricao }}</td>
-                    <td class="text-muted">{{ bobina.peso_inicial }} kg</td>
-                    <td class="fw-bold {% if bobina.saldo_atual > 0 %}text-success{% else %}text-danger{% endif %}">{{ bobina.saldo_atual }} kg</td>
+                    <td class="text-muted">{{ bobina.peso_inicial|floatformat:"2g" }} kg</td>
+                    <td class="fw-bold {% if bobina.saldo_atual > 0 %}text-success{% else %}text-danger{% endif %}">{{ bobina.saldo_atual|floatformat:"2g" }} kg</td>
                     <td>
                         {% if bobina.status_visual == 'fechada' %}
                             <span class="badge bg-secondary px-3">Fechada</span>
@@ -131,8 +131,8 @@
             <tfoot class="table-light fw-bold text-center">
                 <tr>
                     <td colspan="3" class="text-end pe-4 text-uppercase">Totais Listados:</td>
-                    <td>{{ total_peso }} kg</td>
-                    <td class="text-success">{{ total_saldo }} kg</td>
+                    <td>{{ total_peso|floatformat:"2g" }} kg</td>
+                    <td class="text-success">{{ total_saldo|floatformat:"2g" }} kg</td>
                     <td></td>
                 </tr>
             </tfoot>
