@@ -64,13 +64,16 @@
             </div>
             <div class="d-flex align-items-center">
                 {% if user.is_authenticated %}
-                    <div class="d-none d-md-flex align-items-center gap-3 me-3">
+                    <!-- Removemos o d-none para o bloco principal sempre aparecer -->
+                    <div class="d-flex align-items-center gap-2 me-md-3">
                         
+                        <!-- Botão Pesquisar: Mostra o ícone sempre, mas esconde o texto no celular (d-none d-sm-inline) -->
                         <button type="button" class="btn btn-outline-light d-flex align-items-center py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalPesquisaBobina" title="Pesquisar Bobina (F2)" id="btnAbrirPesquisa">
-                            <span class="me-2">🔍</span> <span>Pesquisar</span>
+                            <span>🔍</span> <span class="d-none d-sm-inline ms-2">Pesquisar</span>
                         </button>
                         
-                        <div class="text-end" style="line-height: 1.2;">
+                        <!-- Saudação: Esconde no celular, mostra no computador (d-none d-md-block) -->
+                        <div class="text-end d-none d-md-block" style="line-height: 1.2;">
                             <span class="text-light d-block small mb-1">Olá, <strong class="text-warning">{{ user.username }}</strong></span>
                             {% if user.perfil %}
                                 <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ user.perfil.tipo }}</span>

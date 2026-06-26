@@ -11,9 +11,9 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body bg-light py-2">
-        <div class="d-flex align-items-center">
-            <strong class="me-3">Filtro:</strong>
-            <div class="btn-group" role="group">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <strong>Filtro:</strong>
+            <div class="d-flex flex-wrap gap-2">
                 <a href="?filtro=ativas" class="btn btn-sm {% if filtro_atual == 'ativas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">📦 Disponíveis (Abertas/Fechadas)</a>
                 <a href="?filtro=finalizadas" class="btn btn-sm {% if filtro_atual == 'finalizadas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">❌ Finalizadas (Esgotadas)</a>
                 <a href="?filtro=todas" class="btn btn-sm {% if filtro_atual == 'todas' %}btn-primary{% else %}btn-outline-secondary{% endif %}">📋 Ver Todas</a>
