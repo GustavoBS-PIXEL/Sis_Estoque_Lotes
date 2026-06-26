@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <title>PDA - Gestão de Estoque</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,6 +32,24 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+        html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+        }
+        /* Permite que o título do painel superior quebre a linha */
+        .navbar-brand {
+            white-space: normal !important;
+            word-wrap: break-word;
+        }
+
+        /* Diminui a fonte do título apenas em telas de celular */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.1rem;
+                line-height: 1.2;
+            }
+        }
+
     </style>
 </head>
 <body class="bg-light">
